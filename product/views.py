@@ -8,7 +8,8 @@ from .serializers import (
     ProdutoSerializer, IngredienteSerializer,
     RestricaoAlimentarSerializer, HistoricoConsultaSerializer
 )
-from .vision_api import extract_text_from_image, get_product_by_barcode
+from .vision_api import extract_text_from_image
+from .services import get_product_by_barcode, salvar_produto_no_banco
 import os
 import tempfile
 import requests
@@ -35,8 +36,8 @@ class HistoricoConsultaViewSet(viewsets.ModelViewSet):
     serializer_class = HistoricoConsultaSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
-# """API para extrair texto de uma imagem"""
 
+# """API para extrair texto de uma imagem"""
 class OCRView(APIView):
 
     def post(self, request):
@@ -58,14 +59,19 @@ class OCRView(APIView):
 
         return Response({"texto_extraido": extracted_text}, status=status.HTTP_200_OK)
 
-# """API para buscar produto pelo código de barras"""
+# """Buscar produto pelo código de barras"""
 
 class ProductByBarcodeView(APIView):
-
     def get(self, request, barcode):
         product_info = get_product_by_barcode(barcode)
 
-        if product_info:
-            return Response(product_info, status=status.HTTP_200_OK)
+        if not product_info:
+            return Response({"error": "Produto não encontrado"}, status=status.HTTP_404_NOT_FOUND)
 
-        return Response({"error": "Produto não encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        produto = salvar_produto_no_banco(product_info)
+
+        if not produto:
+            return Response({"error": "Erro ao salvar produto no banco"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response(ProdutoSerializer(produto).data, status=status.HTTP_200_OK)
+
