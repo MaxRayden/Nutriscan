@@ -4,6 +4,7 @@ from product.IA_services import analisar_restricoes_alimentares
 from product.models import Produto, Ingrediente, RestricaoAlimentar
 
 # """Busca informações do produto pelo código de barras usando Open Food Facts."""
+
 def get_product_by_barcode(barcode):
     try:
         url = f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"

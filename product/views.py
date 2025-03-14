@@ -60,13 +60,19 @@ class OCRView(APIView):
         return Response({"texto_extraido": extracted_text}, status=status.HTTP_200_OK)
 
 # """Buscar produto pelo código de barras"""
-
 class ProductByBarcodeView(APIView):
+
     def get(self, request, barcode):
+
+        produto = Produto.objects.filter(codigo_de_barras=barcode).first()
+
+        if produto:
+            return Response({"message": "Produto encontrado no banco", "produto": ProdutoSerializer(produto).data}, status=status.HTTP_200_OK)
+
         product_info = get_product_by_barcode(barcode)
 
         if not product_info:
-            return Response({"error": "Produto não encontrado"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Produto não encontrado na API"}, status=status.HTTP_404_NOT_FOUND)
 
         produto = salvar_produto_no_banco(product_info)
 
@@ -74,4 +80,3 @@ class ProductByBarcodeView(APIView):
             return Response({"error": "Erro ao salvar produto no banco"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(ProdutoSerializer(produto).data, status=status.HTTP_200_OK)
-
