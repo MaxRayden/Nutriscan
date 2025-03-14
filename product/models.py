@@ -7,6 +7,7 @@ class Produto(models.Model):
     nome = models.CharField(max_length=255)
     marca = models.CharField(max_length=255, blank=True, null=True)
     codigo_de_barras = models.CharField(max_length=50, unique=True)
+    categoria = models.CharField(max_length=255, blank=True, null=True)
     ingredientes = models.ManyToManyField('Ingrediente', related_name='produtos')
     restricoes = models.ManyToManyField('RestricaoAlimentar', related_name='produtos', blank=True)
     imagem = models.ImageField(upload_to='produtos/', blank=True, null=True)
