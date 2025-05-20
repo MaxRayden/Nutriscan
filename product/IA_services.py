@@ -1,71 +1,99 @@
-from openai import OpenAI
-
+import json
+from product.IA_client import client
 from product.vision_api import extract_text_from_image
 
 
+def limpar_resposta_markdown(texto):
+    """Remove blocos de código markdown da resposta da IA."""
+    if texto.startswith("```json") or texto.startswith("```"):
+        return "\n".join([
+            line for line in texto.splitlines()
+            if not line.strip().startswith("```")
+        ]).strip()
+    return texto
+
+
 def analisar_restricoes_alimentares(lista_ingredientes):
-    prompt=f"""
-    Identifique restrições alimentares com base nos seguintes ingredientes: {', '.join(lista_ingredientes)}.
-    Responda apenas com os nomes das restrições conhecidas, como "Contém Leite - Intolerância à Lactose e Alergicos" ou "Contém Gluten - Alergia ao Glúten".
-    """
+    prompt = f"""
+Você é um assistente que analisa ingredientes de produtos alimentícios. 
 
+Dada a lista de ingredientes: {', '.join(lista_ingredientes)}, responda apenas com um JSON contendo uma chave "restricoes" que seja uma lista com as restrições alimentares encontradas.
 
-    client = OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key="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",
-    )
+Exemplo de resposta JSON:
+{{
+  "restricoes": [
+    "Contém Leite - Intolerância à Lactose e Alergicos",
+    "Contém Glúten - Alergia ao Glúten"
+  ]
+}}
 
-    completion = client.chat.completions.create(
-        extra_body={},
-        model="meta-llama/llama-3.3-70b-instruct:free",
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
-    print(completion.choices[0].message.content)
+Não inclua texto fora do JSON.
+"""
 
+    try:
+        response = client.chat_completion(
+            model="meta-llama/llama-3.3-70b-instruct:free",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        resposta_texto = response["choices"][0]["message"]["content"].strip()
+        resposta_texto = limpar_resposta_markdown(resposta_texto)
+        resposta_json = json.loads(resposta_texto)
+        return resposta_json.get("restricoes", [])
+
+    except Exception as e:
+        print("Erro ao decodificar JSON da resposta:", e)
+        print("Resposta bruta da IA:", resposta_texto)
+        return []
 
 
 def analisar_texto(extracted_text):
-    prompt2=f""""
-    O seguinte texto {', ' .join(extracted_text)}, que foi retirado de uma foto de um produto alimentício, 
-    analise o texto e identifique:nome, ingredientes, 
-    lista_ingredientes, marca, categoria, quantidade, paises_venda, 
-    nutriscore, nova_group, alergenicos, aditivo, embalagem, tabela_nutricional, link_de_imagem
-    e por fim faça uma análise e identifique as restrições alimentares e alergias e retorne um json"""
+    prompt = f"""
+O seguinte texto {', '.join(extracted_text)}, que foi retirado de uma foto de um produto alimentício, 
+analise o texto e identifique os seguintes campos:
+- nome
+- ingredientes
+- lista_ingredientes
+- marca
+- categoria
+- quantidade
+- paises_venda
+- nutriscore
+- nova_group
+- alergenicos
+- aditivo
+- embalagem
+- tabela_nutricional
+- link_de_imagem
 
-    client = OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key="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",
-    )
+E por fim, faça uma análise das restrições alimentares e alergias. 
+Retorne um JSON contendo todos esses campos. Apenas o JSON, sem explicações adicionais.
+"""
 
-    completion = client.chat.completions.create(
-        extra_body={},
-        model="meta-llama/llama-3.3-70b-instruct:free",
-        messages=[
-            {
-                "role": "user",
-                "content": prompt2
-            }
-        ]
-    )
-    print(completion.choices[0].message.content)
+    try:
+        response = client.chat_completion(
+            model="meta-llama/llama-3.3-70b-instruct:free",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        resposta_texto = response["choices"][0]["message"]["content"].strip()
+        resposta_texto = limpar_resposta_markdown(resposta_texto)
+        return json.loads(resposta_texto)
 
-# def __name__ == '__main__':
-#     extract_text_= [""]
+    except Exception as e:
+        print("Erro ao decodificar JSON da resposta:", e)
+        print("Resposta bruta da IA:", resposta_texto)
+        return {}
 
 
+# Teste rápido
+if __name__ == "__main__":
+    ingredientes = ["Leite", "Farinha de trigo", "Soja"]
+    restricoes = analisar_restricoes_alimentares(ingredientes)
+    print("Restrições detectadas:", restricoes)
 
-
-
-
-
-
-
-
+    # Exemplo opcional de uso com imagem
+    # texto_extraido = extract_text_from_image("caminho/para/imagem.jpg")
+    # resultado = analisar_texto(texto_extraido)
+    # print(json.dumps(resultado, indent=2, ensure_ascii=False))
 
 
     #
